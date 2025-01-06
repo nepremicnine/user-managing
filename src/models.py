@@ -18,3 +18,12 @@ class UserUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location: Optional[str] = None
+
+class UserCreate(BaseModel):
+    id: str
+    email: str
+    first_name: str
+    last_name: str
+    latitude: float
+    longitude: float
+    location: str

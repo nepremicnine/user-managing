@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
-from models import User, UserUpdate
+from models import User, UserUpdate, UserCreate
 from auth_handler import verify_jwt_token, get_supabase_client
 from dotenv import load_dotenv
 import os
@@ -20,7 +20,7 @@ app = FastAPI()
 
 # Circuit Breaker Configuration
 breaker = pybreaker.CircuitBreaker(
-    fail_max=5,  
+    fail_max=3,  
     reset_timeout=30  
 )
 
@@ -63,8 +63,9 @@ def fetch_user_from_supabase(user_id: str):
     }
 
     payload = {"query": graphql_query, "variables": {"id": user_id}}
+    print(SUPABASE_GRAPHQL_URL)
     response = requests.post(SUPABASE_GRAPHQL_URL, json=payload, headers=headers)
-
+    
     if response.status_code != 200:
         raise requests.exceptions.RequestException("Failed to fetch data from Supabase")
 
@@ -98,6 +99,7 @@ async def get_user(user_id: str):
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
 
 
 # Helper function with Retry + Circuit Breaker for updating user data
@@ -167,5 +169,86 @@ async def edit_user(user_id: str, user: UserUpdate):
             status_code=503,
             detail="Service temporarily unavailable due to repeated failures."
         )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+
+# Helper function with Retry + Circuit Breaker for inserting user data
+@retry_strategy
+@breaker
+def insert_user_in_supabase(user_data: dict):
+    # Validate UUID format for user ID
+    if not re.match(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", user_data.get("id", "")):
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+
+    graphql_query = """
+        mutation InsertUser($id: UUID!, $email: String!, $first_name: String!, $last_name: String!, $location: String!, $latitude: Float!, $longitude: Float!) {
+            insertusers_dataCollection(objects: {
+                id: $id,
+                email: $email,
+                first_name: $first_name,
+                last_name: $last_name,
+                location: $location,
+                latitude: $latitude,
+                longitude: $longitude
+            }) {
+                records {
+                    id
+                    email
+                    first_name
+                    last_name
+                    location
+                    latitude
+                    longitude
+                }
+            }
+        }
+    """
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_KEY,
+    }
+
+    payload = {
+        "query": graphql_query,
+        "variables": user_data,
+    }
+
+    response = requests.post(SUPABASE_GRAPHQL_URL, json=payload, headers=headers)
+
+    if response.status_code != 200:
+        raise requests.exceptions.RequestException("Failed to insert user in Supabase")
+
+    return response.json()
+
+
+# Create user endpoint
+@app.post("/users")
+async def create_user(user: UserCreate):
+    try:
+        user_data = user.dict()
+        data = insert_user_in_supabase(user_data)
+        
+        if not data.get("data") or not data["data"].get("insertusers_dataCollection"):
+            raise HTTPException(status_code=500, detail="Failed to insert user in Supabase.")
+        
+        return {
+            "message": "User created successfully",
+            "user": data["data"]["insertusers_dataCollection"]["records"][0]
+        }
+    
+    except RetryError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable after multiple retry attempts. Please try again later."
+        )
+    
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable due to repeated failures."
+        )
+    
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
