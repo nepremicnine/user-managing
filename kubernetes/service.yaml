@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: property-managing
+  name: user-managing
   namespace: nepremicnine
   labels:
-    app: property-managing
+    app: user-managing
 spec:
   type: ClusterIP
   selector:
-    app: property-managing
+    app: user-managing
   ports:
     - protocol: TCP
       name: http
