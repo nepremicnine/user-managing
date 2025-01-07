@@ -15,6 +15,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_GRAPHQL_URL = f"{SUPABASE_URL}/graphql/v1"
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+USER_MANAGING_SERVER_PORT = os.getenv("USER_MANAGING_SERVER_PORT", "8080")
+USER_MANAGING_SERVER_MODE = os.getenv("USER_MANAGING_SERVER_MODE", "development")
+USER_MANAGING_PREFIX = f"/user-managing" if USER_MANAGING_SERVER_MODE == "release" else ""
 
 app = FastAPI()
 
@@ -73,7 +76,7 @@ def fetch_user_from_supabase(user_id: str):
 
 
 # Get user by ID
-@app.get("/users/{user_id}")
+@app.get(f"{USER_MANAGING_PREFIX}"+"/users/{user_id}")
 async def get_user(user_id: str):
     try:
         data = fetch_user_from_supabase(user_id)
@@ -151,7 +154,7 @@ def update_user_in_supabase(user_id: str, user_data: dict):
 
 
 # Edit user by ID
-@app.put("/users/{user_id}")
+@app.put(f"{USER_MANAGING_PREFIX}"+"/users/{user_id}")
 async def edit_user(user_id: str, user: UserUpdate):
     try:
         user_data = user.dict(exclude_unset=True)
@@ -224,7 +227,7 @@ def insert_user_in_supabase(user_data: dict):
 
 
 # Create user endpoint
-@app.post("/users")
+@app.post(f"{USER_MANAGING_PREFIX}/users")
 async def create_user(user: UserCreate):
     try:
         user_data = user.dict()
@@ -256,6 +259,6 @@ async def create_user(user: UserCreate):
 
 
 # Health check endpoint
-@app.get("/health")
+@app.get(f"{USER_MANAGING_PREFIX}/health")
 async def health_check():
     return {"status": "ok"}
