@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
-from models import User, UserUpdate, UserCreate
-from auth_handler import verify_jwt_token, get_supabase_client
+from src.models import User, UserUpdate, UserCreate
+from src.auth_handler import verify_jwt_token, get_supabase_client
 from dotenv import load_dotenv
 import os
 import requests
@@ -252,3 +252,10 @@ async def create_user(user: UserCreate):
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
