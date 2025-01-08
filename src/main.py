@@ -9,6 +9,7 @@ import re
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
 from src.cpuhealth import check_cpu_health
 from src.diskhealth import check_disk_health
+from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +21,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 USER_MANAGING_SERVER_PORT = os.getenv("USER_MANAGING_SERVER_PORT", "8080")
 USER_MANAGING_SERVER_MODE = os.getenv("USER_MANAGING_SERVER_MODE", "development")
 USER_MANAGING_PREFIX = f"/user-managing" if USER_MANAGING_SERVER_MODE == "release" else ""
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 app = FastAPI(
     title="User Management API",
@@ -28,6 +30,20 @@ app = FastAPI(
     openapi_url=f"{USER_MANAGING_PREFIX}/openapi.json",
     docs_url=f"{USER_MANAGING_PREFIX}/docs",
     redoc_url=f"{USER_MANAGING_PREFIX}/redoc",
+)
+
+origins = [
+    FRONTEND_URL,
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Circuit Breaker Configuration

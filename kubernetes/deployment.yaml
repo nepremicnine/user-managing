@@ -43,6 +43,11 @@ spec:
               value: "8080"
             - name: USER_MANAGING_SERVER_MODE
               value: "release"
+            - name: FRONTEND_URL
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: FRONTEND_URL
           resources:
             limits:
               cpu: "0.1"
