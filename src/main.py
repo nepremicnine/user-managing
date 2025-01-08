@@ -19,7 +19,14 @@ USER_MANAGING_SERVER_PORT = os.getenv("USER_MANAGING_SERVER_PORT", "8080")
 USER_MANAGING_SERVER_MODE = os.getenv("USER_MANAGING_SERVER_MODE", "development")
 USER_MANAGING_PREFIX = f"/user-managing" if USER_MANAGING_SERVER_MODE == "release" else ""
 
-app = FastAPI()
+app = FastAPI(
+    title="User Management API",
+    description="API to manage user data in Supabase",
+    version="1.0.0",
+    openapi_url=f"{USER_MANAGING_PREFIX}/openapi.json",
+    docs_url=f"{USER_MANAGING_PREFIX}/docs",
+    redoc_url=f"{USER_MANAGING_PREFIX}/redoc",
+)
 
 # Circuit Breaker Configuration
 breaker = pybreaker.CircuitBreaker(
