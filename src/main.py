@@ -268,12 +268,12 @@ async def create_user(user: UserCreate):
 
 
 # Health check endpoint
-@app.get(f"{USER_MANAGING_PREFIX}/health")
+@app.get(f"{USER_MANAGING_PREFIX}/health/general")
 async def health_check():
     return {"status": "ok"}
 
 # SUpabase health check endpoint
-@app.get(f"{USER_MANAGING_PREFIX}/supabase-health")
+@app.get(f"{USER_MANAGING_PREFIX}/health/database")
 async def supabase_health_check():
     try:
         # > curl https://<project-ref>.supabase.co/customer/v1/privileged/metrics --user 'service_role:<service-role-jwt>'
@@ -295,12 +295,12 @@ async def supabase_health_check():
             detail="Supabase service is unavailable."
         )
     
-@app.get("/health/cpu", response_model=HealthResponse)
+@app.get(f"{USER_MANAGING_PREFIX}/health/cpu", response_model=HealthResponse)
 async def cpu_health_check():
     cpu_health = check_cpu_health()
     return HealthResponse(status=cpu_health.status, components={"cpu": cpu_health})
 
-@app.get("/health/disk", response_model=HealthResponse)
+@app.get(f"{USER_MANAGING_PREFIX}/health/disk", response_model=HealthResponse)
 async def disk_health_check():
     """
     Check the health of the disk.
@@ -311,4 +311,43 @@ async def disk_health_check():
         components={"disk": disk_health}
     )
     
+@app.get(f"{USER_MANAGING_PREFIX}/health/readiness", response_model=HealthResponse)
+async def readiness_check():
+    """
+    Check the readiness of the service.
+    """
+    try:
+        # Perform all health checks
+        cpu_health = check_cpu_health()
+        disk_health = check_disk_health()
+        
+        # Call supabase health logic directly, avoiding the async route call
+        project_ref = os.getenv("PROJECT_REF")
+        response = requests.get(
+            f"https://{project_ref}.supabase.co/customer/v1/privileged/metrics",
+            auth=("service_role", SUPABASE_SERVICE_ROLE_KEY)
+        )
+        
+        if response.status_code != 200:
+            database_health = HealthComponent(status=HealthStatus.DOWN, details="Supabase service is unavailable.")
+        else:
+            database_health = HealthComponent(status=HealthStatus.UP, details="Supabase service is operational.")
+        
+        return HealthResponse(
+            status=HealthStatus.UP,
+            components={
+                "cpu": cpu_health,
+                "database": database_health,
+                "disk": disk_health
+            }
+        )
+    
+    except Exception as e:
+        return HealthResponse(
+            status=HealthStatus.DOWN,
+            components={
+                "error": HealthComponent(status=HealthStatus.DOWN, details=str(e))
+            }
+        )
+        
 

@@ -52,7 +52,7 @@ spec:
               memory: "32Mi"
           readinessProbe:
             httpGet:
-              path: /user-managing/health
+              path: /user-managing/health/readiness
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 30
@@ -61,7 +61,7 @@ spec:
             failureThreshold: 30
           livenessProbe:
             httpGet:
-              path: /user-managing/health
+              path: /user-managing/health/general
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
