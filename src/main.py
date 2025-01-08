@@ -195,7 +195,7 @@ def insert_user_in_supabase(user_data: dict):
 
     graphql_query = """
         mutation InsertUser($id: UUID!, $email: String!, $first_name: String!, $last_name: String!, $location: String!, $latitude: Float!, $longitude: Float!) {
-            insertusers_dataCollection(objects: {
+            insertIntousers_dataCollection(objects: {
                 id: $id,
                 email: $email,
                 first_name: $first_name,
@@ -227,6 +227,7 @@ def insert_user_in_supabase(user_data: dict):
         "variables": user_data,
     }
 
+    # print(payload)
     response = requests.post(SUPABASE_GRAPHQL_URL, json=payload, headers=headers)
 
     if response.status_code != 200:
@@ -239,33 +240,25 @@ def insert_user_in_supabase(user_data: dict):
 @app.post(f"{USER_MANAGING_PREFIX}/users")
 async def create_user(user: UserCreate):
     try:
-        user_data = user.dict()
+        user_data = user.model_dump()
+
         data = insert_user_in_supabase(user_data)
-        
-        if not data.get("data") or not data["data"].get("insertusers_dataCollection"):
-            raise HTTPException(status_code=500, detail="Failed to insert user in Supabase.")
-        
-        return {
-            "message": "User created successfully",
-            "user": data["data"]["insertusers_dataCollection"]["records"][0]
-        }
+        return data['data']['insertIntousers_dataCollection']['records'][0]
     
-    except RetryError:
+    except RetryError as retry_error:
         raise HTTPException(
             status_code=503,
             detail="Service temporarily unavailable after multiple retry attempts. Please try again later."
         )
-    
+
     except pybreaker.CircuitBreakerError:
         raise HTTPException(
             status_code=503,
             detail="Service temporarily unavailable due to repeated failures."
         )
-    
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-
 
 # Health check endpoint
 @app.get(f"{USER_MANAGING_PREFIX}/health")
