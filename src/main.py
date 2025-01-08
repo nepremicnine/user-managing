@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
-from src.models import User, UserUpdate, UserCreate, HealthResponse
+from src.models import User, UserUpdate, UserCreate, HealthResponse, HealthComponent, HealthStatus
 from src.auth_handler import verify_jwt_token, get_supabase_client
 from dotenv import load_dotenv
 import os
@@ -8,6 +8,7 @@ import pybreaker
 import re
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
 from src.cpuhealth import check_cpu_health
+from src.diskhealth import check_disk_health
 
 # Load environment variables
 load_dotenv()
@@ -298,5 +299,16 @@ async def supabase_health_check():
 async def cpu_health_check():
     cpu_health = check_cpu_health()
     return HealthResponse(status=cpu_health.status, components={"cpu": cpu_health})
+
+@app.get("/health/disk", response_model=HealthResponse)
+async def disk_health_check():
+    """
+    Check the health of the disk.
+    """
+    disk_health = check_disk_health()
+    return HealthResponse(
+        status=disk_health.status,
+        components={"disk": disk_health}
+    )
     
 

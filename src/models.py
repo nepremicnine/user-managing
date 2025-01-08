@@ -2,6 +2,10 @@ from pydantic import BaseModel
 from typing import Optional
 from typing import Dict, Union
 
+class HealthStatus:
+    UP = "UP"
+    DOWN = "DOWN"
+
 class HealthComponent(BaseModel):
     status: str
     details: Union[str, None] = None
