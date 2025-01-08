@@ -1,5 +1,15 @@
 from pydantic import BaseModel
 from typing import Optional
+from typing import Dict, Union
+
+class HealthComponent(BaseModel):
+    status: str
+    details: Union[str, None] = None
+
+class HealthResponse(BaseModel):
+    status: str
+    components: Dict[str, HealthComponent]
+
 
 class User(BaseModel):
     id: str

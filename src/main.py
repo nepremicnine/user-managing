@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
-from src.models import User, UserUpdate, UserCreate
+from src.models import User, UserUpdate, UserCreate, HealthResponse
 from src.auth_handler import verify_jwt_token, get_supabase_client
 from dotenv import load_dotenv
 import os
@@ -7,6 +7,7 @@ import requests
 import pybreaker
 import re
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
+from src.cpuhealth import check_cpu_health
 
 # Load environment variables
 load_dotenv()
@@ -269,3 +270,33 @@ async def create_user(user: UserCreate):
 @app.get(f"{USER_MANAGING_PREFIX}/health")
 async def health_check():
     return {"status": "ok"}
+
+# SUpabase health check endpoint
+@app.get(f"{USER_MANAGING_PREFIX}/supabase-health")
+async def supabase_health_check():
+    try:
+        # > curl https://<project-ref>.supabase.co/customer/v1/privileged/metrics --user 'service_role:<service-role-jwt>'
+        project_ref = os.getenv("PROJECT_REF")
+        response = requests.get("https://"+project_ref+".supabase.co/customer/v1/privileged/metrics", auth=("service_role", SUPABASE_SERVICE_ROLE_KEY))
+                
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=503,
+                detail="Supabase service is unavailable."
+            )
+        return {"status": "ok"}
+    
+    except requests.exceptions.RequestException:
+        # Print the original exception
+        
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase service is unavailable."
+        )
+    
+@app.get("/health/cpu", response_model=HealthResponse)
+async def cpu_health_check():
+    cpu_health = check_cpu_health()
+    return HealthResponse(status=cpu_health.status, components={"cpu": cpu_health})
+    
+
