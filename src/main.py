@@ -22,6 +22,7 @@ USER_MANAGING_SERVER_PORT = os.getenv("USER_MANAGING_SERVER_PORT", "8080")
 USER_MANAGING_SERVER_MODE = os.getenv("USER_MANAGING_SERVER_MODE", "development")
 USER_MANAGING_PREFIX = f"/user-managing" if USER_MANAGING_SERVER_MODE == "release" else ""
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080")
 
 app = FastAPI(
     title="User Management API",
@@ -34,6 +35,7 @@ app = FastAPI(
 
 origins = [
     FRONTEND_URL,
+    BACKEND_URL,
     "http://localhost",
     "http://localhost:3000",
 ]
