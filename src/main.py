@@ -182,7 +182,7 @@ def update_user_in_supabase(user_id: str, user_data: dict):
 @app.put(f"{USER_MANAGING_PREFIX}"+"/users/{user_id}")
 async def edit_user(user_id: str, user: UserUpdate):
     try:
-        user_data = user.dict(exclude_unset=True)
+        user_data = user.model_dump(exclude_unset=True)
         data = update_user_in_supabase(user_id, user_data)
         return data
     
@@ -286,8 +286,7 @@ async def health_check():
 async def supabase_health_check():
     try:
         # > curl https://<project-ref>.supabase.co/customer/v1/privileged/metrics --user 'service_role:<service-role-jwt>'
-        project_ref = os.getenv("PROJECT_REF")
-        response = requests.get("https://"+project_ref+".supabase.co/customer/v1/privileged/metrics", auth=("service_role", SUPABASE_SERVICE_ROLE_KEY))
+        response = requests.get(f"{SUPABASE_URL}/customer/v1/privileged/metrics", auth=("service_role", SUPABASE_SERVICE_ROLE_KEY))
                 
         if response.status_code != 200:
             raise HTTPException(
@@ -331,9 +330,8 @@ async def readiness_check():
         disk_health = check_disk_health()
         
         # Call supabase health logic directly, avoiding the async route call
-        project_ref = os.getenv("PROJECT_REF")
         response = requests.get(
-            f"https://{project_ref}.supabase.co/customer/v1/privileged/metrics",
+            f"{SUPABASE_URL}/customer/v1/privileged/metrics",
             auth=("service_role", SUPABASE_SERVICE_ROLE_KEY)
         )
         
