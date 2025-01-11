@@ -11,3 +11,4 @@ tenacity==9.0.0
 pybreaker==1.2.0
 requests==2.31.0
 psutil==5.9.0
+prometheus-fastapi-instrumentator==7.0.0

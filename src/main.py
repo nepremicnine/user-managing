@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from src.models import User, UserUpdate, UserCreate, HealthResponse, HealthComponent, HealthStatus
 from src.auth_handler import verify_jwt_token, get_supabase_client
 from dotenv import load_dotenv
@@ -10,6 +10,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from src.cpuhealth import check_cpu_health
 from src.diskhealth import check_disk_health
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter, Summary
+from time import time
 
 # Load environment variables
 load_dotenv()
@@ -64,6 +67,31 @@ retry_strategy = retry(
     wait=wait_exponential(multiplier=1, min=2, max=6),  # Exponential backoff: 2s, 4s, 6s
     retry=retry_if_exception_type(requests.exceptions.RequestException)  # Retry only on network-related errors
 )
+
+# Initialize Prometheus instrumentator
+Instrumentator().instrument(app).expose(app, endpoint=f"{USER_MANAGING_PREFIX}/metrics")
+
+# Additional custom metrics
+REQUEST_COUNT = Counter('request_count', 'Total number of requests', ['method', 'endpoint', 'status_code'])
+REQUEST_LATENCY = Summary('request_latency_seconds', 'Latency of requests in seconds')
+
+@app.middleware("http")
+async def add_prometheus_metrics(request: Request, call_next):
+    start_time = time()
+    response = await call_next(request)
+    process_time = time() - start_time
+
+    # Record custom metrics
+    REQUEST_COUNT.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status_code=response.status_code
+    ).inc()
+
+    REQUEST_LATENCY.observe(process_time)
+
+    return response
+
 
 
 # Helper function with Retry + Circuit Breaker for fetching user data
